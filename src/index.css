@@ -1,0 +1,208 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.perspective {
+  perspective: 1000px;
+  width: 250px;
+  height: 250px;
+  margin: 0 auto;
+  touch-action: none;
+}
+
+@media (min-width: 640px) {
+  .perspective {
+    width: 300px;
+    height: 300px;
+  }
+}
+
+.cube {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-out;
+}
+
+.cube-face {
+  position: absolute;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  transition: background-color 0.3s ease;
+}
+
+/* Caras frontales y traseras (tamaño completo) */
+.cube-face-1,
+.cube-face-2 {
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+}
+.cube-face-1 { transform: translateZ(62.5px); }  /* Frente */
+.cube-face-2 { 
+  background-blend-mode: overlay;
+  position: relative;
+  transform: rotateY(180deg) translateZ(62.5px); 
+}  /* Atrás */
+
+.cube-face-2::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+/* Caras laterales (mitad del ancho) */
+.cube-face-3 {
+  width: 50%;
+  height: 100%;
+  left: 35%;
+  top: 0%;
+}
+.cube-face-4 {
+  width: 50%;
+  height: 100%;
+  left: -65%;
+  top: 0%;
+}
+.cube-face-3 { transform: rotateY(90deg) translateZ(100px); }  /* Derecha */
+.cube-face-4 { transform: rotateY(-90deg) translateZ(-50px); }  /* Izquierda */
+
+/* Caras superior e inferior (mitad del alto) */
+.cube-face-5{
+  width: 100%;
+  height: 50%;
+  top: 0%;
+}
+
+.cube-face-6 {
+  width: 100%;
+  height: 50%;
+  top: 50%;
+}
+.cube-face-5 { transform: rotateX(90deg) translateZ(100px); }  /* Arriba */
+.cube-face-6 { transform: rotateX(-90deg) translateZ(100px); }  /* Abajo */
+
+@media (min-width: 640px) {
+  .cube-face-1 { transform: translateZ(75px); }
+  .cube-face-2 { 
+    background-blend-mode: overlay;
+    position: relative;
+    transform: rotateY(180deg) translateZ(75px); 
+  }
+  .cube-face-3 { transform: rotateY(90deg) translateZ(120px); }
+  .cube-face-4 { transform: rotateY(-90deg) translateZ(-120px); }
+  .cube-face-5 { transform: rotateX(90deg) translateZ(75px); }
+  .cube-face-6 { transform: rotateX(-90deg) translateZ(75px); }
+}
+
+.cube-face-2::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+/* Ranura en la cara superior */
+.cube-face-5::after {
+  content: '';
+  position: absolute;
+  width: 50px;  /* 5cm */
+  height: 5px;   /* 0.5cm */
+  background-color: #000;  /* Negro sólido */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  /* Efectos para dar profundidad */
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(255, 255, 255, 0.3);
+  /* Gradiente para dar efecto de profundidad */
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+/* Estilo personalizado para el control deslizante */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+/* Estilo personalizado para el selector de color */
+input[type="color"] {
+  -webkit-appearance: none;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.face-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Ajuste específico para la etiqueta de la cara superior */
+.cube-face-5 .face-label {
+  transform: translate(-50%, -50%) rotateX(-90deg);
+}
+
+/* Ajuste específico para la etiqueta de la cara inferior */
+.cube-face-6 .face-label {
+  transform: translate(-50%, -50%) rotateX(90deg);
+}
