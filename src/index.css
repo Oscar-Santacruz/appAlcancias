@@ -74,19 +74,18 @@
   top: 0%;
 }
 .cube-face-3 { transform: rotateY(90deg) translateZ(100px); }  /* Derecha */
-.cube-face-4 { transform: rotateY(-90deg) translateZ(-50px); }  /* Izquierda */
-
+.cube-face-4 { transform: rotateY(-90deg) translateZ(-50px); left: -45%; }  /* Izquierda */
 /* Caras superior e inferior (mitad del alto) */
 .cube-face-5{
   width: 100%;
   height: 50%;
-  top: 0%;
+  top: 15%;
 }
 
 .cube-face-6 {
   width: 100%;
   height: 50%;
-  top: 50%;
+  top: 35%;
 }
 .cube-face-5 { transform: rotateX(90deg) translateZ(100px); }  /* Arriba */
 .cube-face-6 { transform: rotateX(-90deg) translateZ(100px); }  /* Abajo */
@@ -99,9 +98,9 @@
     transform: rotateY(180deg) translateZ(75px); 
   }
   .cube-face-3 { transform: rotateY(90deg) translateZ(120px); }
-  .cube-face-4 { transform: rotateY(-90deg) translateZ(-120px); }
-  .cube-face-5 { transform: rotateX(90deg) translateZ(75px); }
-  .cube-face-6 { transform: rotateX(-90deg) translateZ(75px); }
+  .cube-face-4 { transform: rotateY(-90deg) translateZ(-120px); left: -65%; }
+  .cube-face-5 { transform: rotateX(90deg) translateZ(75px);   top: 0%;}
+  .cube-face-6 { transform: rotateX(-90deg) translateZ(75px); top: 50%;}
 }
 
 .cube-face-2::before {
