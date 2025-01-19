@@ -3,6 +3,10 @@ import { Upload, RotateCw, RefreshCw, Palette, Instagram, MessageSquare, Downloa
 import html2canvas from 'html2canvas';
 import planAhorro from './naruto.png';
 import ImageTest from './ImageTest';
+import ImageService from './services/imageService';
+import CookieConsent from './components/CookieConsent';
+import ConsentService from './services/consentService';
+import type { ConsentSettings } from './types/consent';
 
 interface CubeState {
   rotateX: number;
@@ -21,8 +25,10 @@ interface TouchInfo {
 }
 
 function App() {
+  const [showCookieConsent, setShowCookieConsent] = useState(false);
   const [showImageTest, setShowImageTest] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [cubeColor, setCubeColor] = useState('#C9802C'); 
   const [meta, setMeta] = useState('');
   const [meses, setMeses] = useState('');
@@ -65,6 +71,60 @@ function App() {
     animationFrameId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrameId);
   }, [cubeState.isAutoRotating, cubeState.autoRotateSpeed]);
+
+  useEffect(() => {
+    // Cleanup function para revocar URLs de objetos al desmontar
+    return () => {
+      if (imageUrl) {
+        ImageService.getInstance().revokeObjectURL(imageUrl);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const consentService = ConsentService.getInstance();
+    if (!consentService.hasValidConsent()) {
+      setShowCookieConsent(true);
+    } else {
+      const consent = consentService.getConsent();
+      if (consent?.analytics) {
+        initializeAnalytics();
+      }
+    }
+  }, []);
+
+  const handleConsentAccept = (settings: ConsentSettings) => {
+    const consentService = ConsentService.getInstance();
+    consentService.saveConsent(settings);
+    setShowCookieConsent(false);
+    
+    if (settings.analytics) {
+      initializeAnalytics();
+    }
+  };
+
+  const handleConsentDecline = () => {
+    const consentService = ConsentService.getInstance();
+    consentService.saveConsent({
+      analytics: false,
+      necessary: true,
+      timestamp: Date.now()
+    });
+    setShowCookieConsent(false);
+  };
+
+  const initializeAnalytics = () => {
+    // @ts-ignore
+    window.gtag('js', new Date());
+    // @ts-ignore
+    window.gtag('config', 'G-LVFQ9RQXFJ', {
+      'cookie_domain': 'burbujapy.store',
+      'debug_mode': false,
+      'send_page_view': true,
+      'allow_google_signals': true,
+      'allow_ad_personalization_signals': true
+    });
+  };
 
   // Mouse Events
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -166,11 +226,23 @@ function App() {
     setCubeColor('#C9802C'); 
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setImageUrl(url);
+      const imageService = ImageService.getInstance();
+      
+      // Revocar URL anterior si existe
+      if (imageUrl) {
+        imageService.revokeObjectURL(imageUrl);
+      }
+
+      const result = await imageService.validateAndProcessImage(file);
+      if (result.isValid && result.url) {
+        setImageUrl(result.url);
+        setImageError(null);
+      } else {
+        setImageError(result.error || 'Error al procesar la imagen');
+      }
     }
   };
 
@@ -178,12 +250,24 @@ function App() {
     event.preventDefault();
   };
 
-  const handleDrop = (event: React.DragEvent) => {
+  const handleDrop = async (event: React.DragEvent) => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setImageUrl(url);
+      const imageService = ImageService.getInstance();
+      
+      // Revocar URL anterior si existe
+      if (imageUrl) {
+        imageService.revokeObjectURL(imageUrl);
+      }
+
+      const result = await imageService.validateAndProcessImage(file);
+      if (result.isValid && result.url) {
+        setImageUrl(result.url);
+        setImageError(null);
+      } else {
+        setImageError(result.error || 'Error al procesar la imagen');
+      }
     }
   };
 
@@ -286,6 +370,12 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center p-4">
       <canvas ref={canvasRef} style={{ display: 'none' }} />
+      {showCookieConsent && (
+        <CookieConsent
+          onAccept={handleConsentAccept}
+          onDecline={handleConsentDecline}
+        />
+      )}
       <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 sm:p-8 w-full max-w-4xl">
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6 sm:mb-8 text-center">Personaliza tu caja de ahorro!</h1>
         
