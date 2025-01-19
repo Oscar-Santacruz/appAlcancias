@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, RotateCw, RefreshCw, Palette, Instagram, MessageSquare, Download } from 'lucide-react';
+import { Upload, RotateCw, RefreshCw, Palette, Instagram, MessageSquare, Download, Camera } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import planAhorro from './naruto.png';
 import ImageTest from './ImageTest';
@@ -287,30 +287,51 @@ function App() {
     }
   };
 
-  const captureImage = async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return '';
-    
-    const context = canvas.getContext('2d');
-    if (!context) return '';
-
-    // Configurar canvas
-    canvas.width = 800;
-    canvas.height = 600;
-    
-    // Dibujar el contenido actual
+  const handleDownload = async () => {
     const cubeElement = document.querySelector('.cube-container');
-    if (cubeElement instanceof HTMLElement) {
-      const rect = cubeElement.getBoundingClientRect();
-      context.fillStyle = 'white';
-      context.fillRect(0, 0, canvas.width, canvas.height);
+    if (!cubeElement || !(cubeElement instanceof HTMLElement)) return;
+    
+    try {
+      // Guardamos la rotación actual
+      const currentTransform = cubeRef.current?.style.transform;
       
-      await html2canvas(cubeElement).then(canvas => {
-        context.drawImage(canvas, 0, 0);
+      // Detenemos la rotación automática temporalmente
+      setCubeState(prev => ({ ...prev, isAutoRotating: false }));
+      
+      // Esperamos un momento para asegurar que la rotación se detuvo
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(cubeElement, {
+        backgroundColor: null,
+        scale: 2, // Mejor calidad
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        onclone: (clonedDoc) => {
+          // Ajustamos el elemento clonado para asegurar que capture bien
+          const clonedCube = clonedDoc.querySelector('.cube-container');
+          if (clonedCube instanceof HTMLElement) {
+            clonedCube.style.transform = 'none';
+            clonedCube.style.margin = '0';
+          }
+        }
       });
+      
+      // Restauramos la rotación automática si estaba activa
+      if (cubeState.isAutoRotating) {
+        setCubeState(prev => ({ ...prev, isAutoRotating: true }));
+      }
+      
+      const link = document.createElement('a');
+      link.download = 'mi-alcancia-3d.png';
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error al generar la imagen:', error);
+      alert('Hubo un error al generar la imagen. Por favor intenta de nuevo.');
     }
-
-    return canvas.toDataURL('image/png');
   };
 
   const handleWhatsAppClick = async () => {
@@ -330,16 +351,52 @@ function App() {
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleDownloadImage = async () => {
-    const imageUrl = await captureImage();
-    if (!imageUrl) return;
-
-    const link = document.createElement('a');
-    link.download = 'mi-alcancia-personalizada.png';
-    link.href = imageUrl;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleScreenshot = async () => {
+    const mainContainer = document.querySelector('.min-h-screen');
+    if (!mainContainer || !(mainContainer instanceof HTMLElement)) return;
+    
+    try {
+      // Detenemos la rotación automática temporalmente
+      const wasRotating = cubeState.isAutoRotating;
+      setCubeState(prev => ({ ...prev, isAutoRotating: false }));
+      
+      // Esperamos un momento para asegurar que la rotación se detuvo
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(mainContainer, {
+        scale: 3, // Aumentamos la escala para mejor calidad
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        removeContainer: true,
+        foreignObjectRendering: true,
+        imageTimeout: 0,
+        onclone: (clonedDoc) => {
+          // Aseguramos que los estilos se mantienen en el clon
+          const clonedElement = clonedDoc.querySelector('.min-h-screen');
+          if (clonedElement instanceof HTMLElement) {
+            clonedElement.style.width = '100%';
+            clonedElement.style.height = '100%';
+          }
+        }
+      });
+      
+      // Restauramos la rotación automática si estaba activa
+      if (wasRotating) {
+        setCubeState(prev => ({ ...prev, isAutoRotating: true }));
+      }
+      
+      const link = document.createElement('a');
+      link.download = 'alcancia-screenshot.png';
+      link.href = canvas.toDataURL('image/png', 1.0); // Máxima calidad
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error al capturar la pantalla:', error);
+      alert('Hubo un error al capturar la pantalla. Por favor intenta de nuevo.');
+    }
   };
 
   const cubeStyle = {
@@ -369,7 +426,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center p-4">
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
       {showCookieConsent && (
         <CookieConsent
           onAccept={handleConsentAccept}
@@ -377,210 +433,158 @@ function App() {
         />
       )}
       <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 sm:p-8 w-full max-w-4xl">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6 sm:mb-8 text-center">Personaliza tu caja de ahorro!</h1>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-          <div className="space-y-4 sm:space-y-6 order-2 md:order-1">
-            {/* Sección de Controles */}
-            <div 
-              className="flex flex-col items-center justify-center p-6 sm:p-8 border-2 border-dashed border-white/30 rounded-lg cursor-pointer hover:border-white/50 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            >
-              <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-white mb-4" />
-              <p className="text-white text-center mb-2 text-sm sm:text-base">
-                Toca para subir o arrastra y suelta
-              </p>
-              <p className="text-white/60 text-xs sm:text-sm">
-                Soporta: JPG, PNG, WebP
-              </p>
+        <div className="flex flex-col items-center space-y-6">
+          {/* Inputs de Meta y Meses al inicio */}
+          <div className="w-full max-w-sm space-y-4">
+            <div>
+              <label className="block text-white mb-2">Meta de Ahorro</label>
               <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
+                type="text"
+                placeholder="Meta de ahorro (Gs.)"
+                value={meta}
+                onChange={handleMetaChange}
+                className="w-full px-4 py-2 bg-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50"
               />
             </div>
-
-            {/* Botones de Control */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-4">
-                <button
-                  onClick={resetCube}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg text-white transition-colors text-sm sm:text-base"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Reiniciar
-                </button>
-                <button
-                  onClick={() => setCubeState(prev => ({ ...prev, isAutoRotating: !prev.isAutoRotating }))}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 active:bg-white/30 rounded-lg text-white transition-colors text-sm sm:text-base"
-                >
-                  <RotateCw className="w-4 h-4" />
-                  {cubeState.isAutoRotating ? 'Detener' : 'Rotar'}
-                </button>
-              </div>
-
-              {/* Control de Velocidad */}
-              <div className="space-y-2">
-                <label className="text-white text-sm">Velocidad de Rotación</label>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="3"
-                  step="0.1"
-                  value={cubeState.autoRotateSpeed}
-                  onChange={(e) => setCubeState(prev => ({ ...prev, autoRotateSpeed: parseFloat(e.target.value) }))}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Control de Color */}
-              <div className="flex items-center gap-4">
-                <Palette className="text-white w-4 h-4" />
-                <input
-                  type="color"
-                  value={cubeColor}
-                  onChange={(e) => setCubeColor(e.target.value)}
-                  className="w-full h-10 sm:h-8 rounded cursor-pointer"
-                />
-              </div>
-
-              {/* Campos de Meta y Meses */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-white text-sm">Meta de Ahorro (Gs.)</label>
-                  <input
-                    type="text"
-                    value={meta}
-                    onChange={handleMetaChange}
-                    placeholder="Ejemplo: 1.000.000"
-                    className="w-full px-4 py-2 bg-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/25"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-white text-sm">Plazo en Meses (máx. 60)</label>
-                  <input
-                    type="text"
-                    value={meses}
-                    onChange={handleMesesChange}
-                    placeholder="Ejemplo: 12"
-                    className="w-full px-4 py-2 bg-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/25"
-                  />
-                </div>
-
-                {meta && meses && (
-                  <div className="bg-white/10 p-4 rounded-lg">
-                    <p className="text-white text-sm">
-                      Ahorro mensual sugerido: Gs. {formatNumber(Math.ceil(parseInt(meta.replace(/\./g, '')) / parseInt(meses)).toString())}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Enlaces de contacto y descarga */}
-              <div className="space-y-4">
-                <div className="flex gap-4">
-                  <a
-                    href="https://www.instagram.com/burbuja_py/?hl=es"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg text-white transition-colors"
-                  >
-                    <Instagram className="w-5 h-5" />
-                    Síguenos
-                  </a>
-                  <button
-                    onClick={handleWhatsAppClick}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg text-white transition-colors"
-                  >
-                    <MessageSquare className="w-5 h-5" />
-                    Contactar
-                  </button>
-                </div>
-
-                <button
-                  onClick={handleDownloadImage}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-white transition-colors"
-                >
-                  <Download className="w-5 h-5" />
-                  Descargar Imagen
-                </button>
-              </div>
+            <div>
+              <label className="block text-white mb-2">Plazo de Ahorro</label>
+              <input
+                type="text"
+                placeholder="Meses (máx. 60)"
+                value={meses}
+                onChange={handleMesesChange}
+                className="w-full px-4 py-2 bg-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50"
+              />
             </div>
+            {meta && meses && (
+              <div className="bg-white/10 p-4 rounded-lg">
+                <p className="text-white text-sm">
+                  Ahorro mensual sugerido: Gs. {formatNumber(Math.ceil(parseInt(meta.replace(/\./g, '')) / parseInt(meses)).toString())}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Vista Previa del Cubo 3D */}
-          <div 
-            className="perspective order-1 md:order-2"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onWheel={handleWheel}
-          >
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
+
+          {/* Cubo */}
+          <div className="cube-container mb-8">
             <div 
-              ref={cubeRef}
-              className="cube"
-              style={cubeStyle}
+              className="perspective"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onWheel={handleWheel}
             >
-              {[...Array(6)].map((_, index) => {
-                const getFaceName = (index: number) => {
-                  switch(index) {
-                    case 0: return "Frente";
-                    case 1: return "Atrás";
-                    case 2: return "Derecha";
-                    case 3: return "Izquierda";
-                    case 4: return "Arriba";
-                    case 5: return "Base";
-                    default: return "";
-                  }
-                };
+              <div 
+                ref={cubeRef}
+                className="cube"
+                style={cubeStyle}
+              >
+                {[...Array(6)].map((_, index) => {
+                  const getFaceName = (index: number) => {
+                    switch(index) {
+                      case 0: return "Frente";
+                      case 1: return "Atrás";
+                      case 2: return "Derecha";
+                      case 3: return "Izquierda";
+                      case 4: return "Arriba";
+                      case 5: return "Base";
+                      default: return "";
+                    }
+                  };
 
-                return (
-                  <div
-                    key={index}
-                    className={`cube-face cube-face-${index + 1}`}
-                    style={{
-                      backgroundImage: index !== 1 && index !== 5 ? 
-                        (imageUrl ? `url(${imageUrl})` : 'none') : 'none',
-                      backgroundColor: index === 5 ? '#C9802C' : (!imageUrl ? cubeColor : 'transparent'),
-                    }}
-                  >
-                    {index === 1 && (
-                      <div className="absolute inset-0 w-full h-full">
-                        {imageUrl && (
+                  return (
+                    <div
+                      key={index}
+                      className={`cube-face cube-face-${index + 1}`}
+                      style={{
+                        backgroundImage: index !== 1 && index !== 5 ? 
+                          (imageUrl ? `url(${imageUrl})` : 'none') : 'none',
+                        backgroundColor: index === 5 ? '#C9802C' : (!imageUrl ? cubeColor : 'transparent'),
+                      }}
+                    >
+                      {index === 1 && (
+                        <div className="absolute inset-0 w-full h-full">
+                          {imageUrl && (
+                            <img 
+                              src={imageUrl} 
+                              alt="Fondo seleccionado" 
+                              className="w-full h-full object-cover absolute inset-0"
+                            />
+                          )}
                           <img 
-                            src={imageUrl} 
-                            alt="Fondo seleccionado" 
-                            className="w-full h-full object-cover absolute inset-0"
+                            src={planAhorro} 
+                            alt="Plan de Ahorro" 
+                            className="w-full h-full object-contain absolute inset-0"
                           />
-                        )}
-                        <img 
-                          src={planAhorro} 
-                          alt="Plan de Ahorro" 
-                          className="w-full h-full object-contain absolute inset-0"
-                        />
-                      </div>
-                    )}
-                    <span className="face-label">{getFaceName(index)}</span>
-                  </div>
-                );
-              })}
+                        </div>
+                      )}
+                      <span className="face-label">{getFaceName(index)}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="mt-6 sm:mt-8 text-white/70 text-xs sm:text-sm text-center">
-          <p> Arrastra para rotar • Pellizca para zoom • Usa los controles para personalizar</p>
+          {/* Botones de control */}
+          <div className="flex gap-4 w-full max-w-sm">
+            <button
+              onClick={() => setCubeState(prev => ({ ...prev, isAutoRotating: !prev.isAutoRotating }))}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+            >
+              <RotateCw size={24} />
+              <span>{cubeState.isAutoRotating ? 'Detener' : 'Rotar'}</span>
+            </button>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+            >
+              <Upload size={18} />
+              <span>Personaliza</span>
+            </button>
+          </div>
+
+          {/* Botones de redes sociales */}
+          <div className="flex gap-4 w-full max-w-sm">
+            <button
+              onClick={() => window.open('https://www.instagram.com/burbujapy/', '_blank')}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] hover:from-[#9B4DCA] hover:via-[#FD3535] hover:to-[#FCB75E] rounded-lg text-white transition-colors"
+            >
+              <Instagram size={24} />
+              <span>Sígueme</span>
+            </button>
+
+            <button
+              onClick={handleWhatsAppClick}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#25D366] hover:bg-[#128C7E] rounded-lg text-white transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824zm-3.423-14.416c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm.029 18.88c-1.161 0-2.305-.292-3.318-.844l-3.677.964.984-3.595c-.607-1.052-.927-2.246-.926-3.468.001-3.825 3.113-6.937 6.937-6.937 1.856.001 3.598.723 4.907 2.034 1.31 1.311 2.031 3.054 2.03 4.908-.001 3.825-3.113 6.938-6.937 6.938z"/>
+              </svg>
+              <span>Escríbeme</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {imageError && (
+        <div className="error-message">
+          {imageError}
+        </div>
+      )}
     </div>
   );
 }
